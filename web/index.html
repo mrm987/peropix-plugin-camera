@@ -11,7 +11,13 @@
     창 골격은 `header`(도구줄) · `main`(본문) · `footer`(상태줄) 로 짠다 — 창을 키우면 **그림판만** 커진다.
   ★그림판은 늘어나는 것이 아니라 **그 크기로 다시 그린다** (`fit()`): 어떤 크기에서도 선이 또렷하다.
 
-  ★★2026-09-10: 캡슐 마네킹을 **입체 모델**로 바꿨다 (사용자 지시).
+  ★★2026-09-11: **기본은 캡슐 마네킹이고, 단추를 누르면 입체 모델로 바뀐다** (사용자 지시).
+    · 마네킹은 2D 캔버스(`hud`)에 직접 그린다 — 앞뒤를 **색**으로 갈라 칠하므로 방위가 한눈에 들어오고,
+      사람 비율(키 1.8) 그대로라 거리 표(`FRAME`)를 옮길 필요가 없다 (`toModel()` 은 입체 모델 전용이다).
+    · 입체 모델은 **누를 때 비로소 받는다** (`ensureModel()`) — 4MB 짜리 GLB 를 안 쓰는 회차까지 받지 않게.
+    · 두 그림은 같은 상태(방위·높이·거리)를 보므로, 어느 쪽으로 보든 만들어지는 태그는 똑같다.
+
+  ★2026-09-10: 입체 모델을 들였을 때의 기록.
     · 모델 `model/character.glb` — 사용자가 Blender 로 만든 3등신 데포르메 경찰 캐릭터.
       리깅·애니메이션 없음, +Y 위 · +Z 정면 · 미터 단위, 키 1.4655 (발 0.0025 ~ 경찰모 1.468).
     · three.js r180 (MIT, `lib/three-LICENSE.txt`) 를 함께 담았다 — 인터넷 없이 떠야 하므로 CDN 을 쓰지 않는다.
@@ -43,6 +49,8 @@
   #hud { pointer-events: none; }
   #out { margin: 0; color: #fff2a6; background: #10141a; }
   .stat b { color: var(--gold); font-weight: var(--w-semi); }
+  /* 마네킹의 앞·뒤 색을 알려 주는 자리 — 입체 모델에서는 숨는다 */
+  .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: -1px; }
   .mulrow input { width: 78px; color: var(--gold); font-family: var(--font-mono); }
   #note { min-height: 16px; }
 </style>
@@ -51,6 +59,7 @@
 <header>
   <button class="primary" id="btnPut" data-put data-t="지금 씬에 넣기">지금 씬에 넣기</button>
   <button id="btnCopy" data-copy data-t="복사">복사</button>
+  <button id="btnMode" data-mode></button>
   <span class="muted spacer" id="hint"></span>
 </header>
 
@@ -58,6 +67,10 @@
   <div class="stage"><div id="view"><canvas id="cv"></canvas><canvas id="hud"></canvas></div></div>
   <div class="row stat">
     <span><span data-t="방위">방위</span> <b id="vAz"></b> · <span data-t="높이">높이</span> <b id="vEl"></b> · <span data-t="거리">거리</span> <b id="vDist"></b></span>
+    <span class="muted spacer" id="legend" style="text-align:right">
+      <i class="sw" style="background:#7fb9f0"></i> <span data-t="앞">앞</span>
+      &nbsp;<i class="sw" style="background:#d98a5c"></i> <span data-t="뒤">뒤</span>
+    </span>
   </div>
   <pre id="out"></pre>
   <div class="row mulrow">
@@ -159,9 +172,24 @@ function frameOf(i){
   return { mid:(bot+top)/2, h:Math.max(0.02, top-bot) };
 }
 
+// ── 마네킹 (발 0 · 머리끝 1.8 · +z 가 정면) ────────────────────────────────
+/* ★기본으로 보이는 그림이다 (사용자 지시 2026-09-11). 사람 비율이라 거리 표(`FRAME`)를 그대로 쓴다 —
+   `toModel()` 을 거치지 않는다. */
+const B = [   // [시작, 끝, 굵기]
+  [[0,0.90,0],[0,1.33,0],0.36],                    // 몸통 — 캡슐 위끝 1.51 (머리와 겹침)
+  [[-0.195,1.36,0],[-0.300,0.75,0],0.115],         // 왼팔 — 몸통에서 조금 떼어 A 포즈
+  [[ 0.195,1.36,0],[ 0.300,0.75,0],0.115],         // 오른팔
+  [[-0.11,0.95,0],[-0.12,0.08,0],0.155],           // 왼다리
+  [[ 0.11,0.95,0],[ 0.12,0.08,0],0.155],           // 오른다리
+];
+const HEAD = { c:[0,1.64,0], r:0.155 };
+// ★앞뒤는 밝기가 아니라 **색**으로 가른다 (밝기로 하면 멀어서 어두운 건지 뒤라서 어두운 건지 헷갈린다)
+const C_FRONT = "#7fb9f0", C_BACK = "#d98a5c";
+
 // ── 상태 ───────────────────────────────────────────────────────────────────
 const AZ_PINS = Array.from({length:16},(_,k)=> -0.875 + k*0.125);
 let azIdx = AZ_PINS.indexOf(0), elIdx = 6, distIdx = 6, mul = 1;   // elIdx 는 EL 배열 인덱스
+let mode = "doll";                                                 // "doll" 마네킹(기본) · "model" 입체 모델
 
 // ── 그림판 ─────────────────────────────────────────────────────────────────
 const view = document.getElementById("view");
@@ -172,15 +200,16 @@ const FOV = 30;                                  // 세로 화각 — 인물 사
 const MARGIN = VH/(VH-40);                       // 위아래 20px 여백 (옛 그림판과 같은 여백)
 const EL_LIMIT = Math.PI/2 - 0.001;              // 바로 위·아래에서 위 방향이 무너지지 않게
 
-let renderer = null, scene = null, camera = null, model = null;
+let renderer = null, scene = null, camera = null, model = null, loading = false;
 const note = (s) => { document.getElementById("note").textContent = s; };
 
 try {
   renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
   renderer.setClearColor(0x10141a, 1);
 } catch (e) {
-  note(T("이 환경에서는 입체 그림을 그릴 수 없습니다 (WebGL 없음). 태그 만들기는 그대로 됩니다."));
+  renderer = null;     // 입체 모델 단추를 잠근다 — 마네킹은 2D 캔버스라 그대로 그려진다
 }
+cv.style.display = "none";   // 기본은 마네킹이다
 
 if (renderer) {
   scene = new THREE.Scene();
@@ -204,13 +233,22 @@ if (renderer) {
   ring((t)=> new THREE.Vector3(0, ORB_Y + Math.sin(t)*ORB_R, Math.cos(t)*ORB_R), 0x8cb4e1, 0.30);
   ring((t)=> new THREE.Vector3(Math.cos(t)*ORB_R, 0, Math.sin(t)*ORB_R), 0x75b9ff, 0.22);
 
+}
+
+/** 입체 모델은 **처음 누를 때** 받는다 — 4MB 짜리 GLB 다 */
+function ensureModel(){
+  if (!renderer || model || loading) return;
+  loading = true;
   note(T("모델을 불러오는 중…"));
   new GLTFLoader().load("./model/character.glb", (gltf) => {
     model = gltf.scene;
     scene.add(model);
     note("");
     draw();
-  }, undefined, (err) => note(T("모델을 불러오지 못했습니다: {e}", { e: (err && err.message) ? err.message : err })));
+  }, undefined, (err) => {
+    loading = false;
+    note(T("모델을 불러오지 못했습니다: {e}", { e: (err && err.message) ? err.message : err }));
+  });
 }
 
 /* ★★**늘리는 것이 아니라 그 크기로 다시 그린다** (사용자 지적 2026-09-10: 창을 키우면 그림만 확대돼 이상하다).
@@ -245,14 +283,131 @@ function place(){
 }
 
 function draw(){
-  if (renderer && model) { place(); renderer.render(scene, camera); }
+  if (mode === "model" && renderer && model) { place(); renderer.render(scene, camera); }
+  hctx.clearRect(0,0,VW,VH);
+  if (mode === "doll") drawDoll();      // 마네킹은 2D 캔버스에 직접 그린다 (입체 그림판은 숨어 있다)
   drawHud();
   sync();
 }
 
-// 거리 눈금 — 휠이 바꾸는 값. 입체 그림 위에 겹쳐 그린다.
+// ── 마네킹 그리기 ──────────────────────────────────────────────────────────
+/* 방위만큼 세계를 돌리고 높이만큼 기울인 뒤, 거리 칸이 담을 높이에 맞춰 배수를 정해 그린다.
+   ★입체 모델과 달리 원근이 없다 — 구도를 가늠하는 그림이므로 부위 크기가 거리에 안 흔들리는 편이 낫다. */
+function dollView(p){
+  const th = AZ_PINS[azIdx]*Math.PI, ph = EL[elIdx].y*Math.PI/2;
+  const x1 = p[0]*Math.cos(th) - p[2]*Math.sin(th);
+  const z1 = p[0]*Math.sin(th) + p[2]*Math.cos(th);
+  return { x:x1,
+           y: p[1]*Math.cos(ph) - z1*Math.sin(ph),
+           d: p[1]*Math.sin(ph) + z1*Math.cos(ph) };
+}
+function drawDoll(){
+  const f = DIST[distIdx].f, scale = (VH-40)/f.h;
+  const anchor = dollView([0,f.c,0]);                  // 프레임 중심을 화면 중앙에
+  const S = (p) => { const v = dollView(p);
+    return { x:VW/2 + v.x*scale, y:VH/2 - (v.y-anchor.y)*scale, d:v.d }; };
+
+  const g = hctx.createLinearGradient(0,0,0,VH);
+  g.addColorStop(0,"#161c23"); g.addColorStop(1,"#11151a");
+  hctx.fillStyle = g; hctx.fillRect(0,0,VW,VH);
+
+  // 인물을 감싸는 고리 둘 — 가로(수평면)와 세로(앞뒤 수직면)
+  const ORB_Y = 0.90, ORB_R = 0.90;
+  const ringPts = (fn) => Array.from({length:97}, (_,k) => S(fn(k/96*Math.PI*2)));
+  const HORZ = ringPts((t)=>[Math.sin(t)*ORB_R, ORB_Y, Math.cos(t)*ORB_R]);
+  const VERT = ringPts((t)=>[0, ORB_Y + Math.sin(t)*ORB_R, Math.cos(t)*ORB_R]);
+  function ringPass(pts, near, col, w) {
+    hctx.strokeStyle = col; hctx.lineWidth = w; hctx.setLineDash([4,7]);
+    hctx.beginPath();
+    let pen = false;
+    for (const q of pts) {
+      const on = near ? q.d >= 0 : q.d < 0;
+      if (on) { pen ? hctx.lineTo(q.x,q.y) : hctx.moveTo(q.x,q.y); pen = true; }
+      else pen = false;
+    }
+    hctx.stroke(); hctx.setLineDash([]);
+  }
+  ringPass(HORZ, false, "rgba(140,180,225,.30)", 1.3);
+  ringPass(VERT, false, "rgba(140,180,225,.22)", 1.3);
+
+  // 바닥
+  hctx.beginPath();
+  for (let k=0;k<=64;k++){ const t=k/64*Math.PI*2;
+    const q=S([Math.cos(t)*ORB_R,0,Math.sin(t)*ORB_R]); k?hctx.lineTo(q.x,q.y):hctx.moveTo(q.x,q.y); }
+  hctx.closePath(); hctx.strokeStyle="rgba(117,185,255,.16)"; hctx.lineWidth=1.2;
+  hctx.setLineDash([5,7]); hctx.stroke(); hctx.setLineDash([]);
+
+  const f0 = dollView([0,0,0]), f1 = dollView([0,0,1]);
+  const FWD = { sx:f1.x-f0.x, sy:-(f1.y-f0.y), d:f1.d-f0.d };
+
+  const clipHalf = (px,py,nx,ny) => {
+    const L = 4000, ex = -ny*L, ey = nx*L;
+    hctx.beginPath();
+    hctx.moveTo(px+ex, py+ey);           hctx.lineTo(px-ex, py-ey);
+    hctx.lineTo(px-ex+nx*L, py-ey+ny*L); hctx.lineTo(px+ex+nx*L, py+ey+ny*L);
+    hctx.closePath(); hctx.clip();
+  };
+  const splitT = (fn) => {
+    const m = Math.hypot(fn, FWD.d) || 1;
+    return Math.max(-1, Math.min(1, -FWD.d/m));
+  };
+
+  const hr = HEAD.r*scale;
+  const H = S(HEAD.c);
+  const items = B.map(([a,b,w])=>{ const A=S(a),C=S(b); return {t:"limb",A,C,w,d:(A.d+C.d)/2}; });
+  items.push({ t:"head", d:H.d });
+  items.sort((m,n)=>m.d-n.d);
+
+  for (const it of items) {
+    if (it.t === "limb") {
+      const half = it.w*scale/2;
+      let ux = it.C.x-it.A.x, uy = it.C.y-it.A.y;
+      const ul = Math.hypot(ux,uy);
+      let nx, ny, fn;
+      if (ul < half) {
+        const hl = Math.hypot(FWD.sx, FWD.sy);
+        if (hl < 1e-6) { nx = 1; ny = 0; fn = 0; }
+        else { nx = FWD.sx/hl; ny = FWD.sy/hl; fn = hl; }
+      } else {
+        ux/=ul; uy/=ul; nx = -uy; ny = ux; fn = FWD.sx*nx + FWD.sy*ny;
+        if (fn < 0) { nx=-nx; ny=-ny; fn=-fn; }
+      }
+      const t = splitT(fn);
+      const line = () => { hctx.beginPath(); hctx.moveTo(it.A.x,it.A.y); hctx.lineTo(it.C.x,it.C.y); hctx.stroke(); };
+      hctx.lineWidth = it.w*scale; hctx.lineCap = "round";
+      if (t <= -0.999) { hctx.strokeStyle = C_FRONT; line(); continue; }
+      hctx.strokeStyle = C_BACK; line();
+      if (t < 1) { hctx.save(); clipHalf(it.A.x+nx*t*half, it.A.y+ny*t*half, nx, ny);
+                   hctx.strokeStyle = C_FRONT; line(); hctx.restore(); }
+      continue;
+    }
+    const hl = Math.hypot(FWD.sx, FWD.sy);
+    const circle = () => { hctx.beginPath(); hctx.arc(H.x,H.y,hr,0,Math.PI*2); hctx.fill(); };
+    const ht = hl < 1e-6 ? (FWD.d > 0 ? -1 : 1) : splitT(hl);
+    if (ht <= -0.999) { hctx.fillStyle = C_FRONT; circle(); }
+    else {
+      hctx.fillStyle = C_BACK; circle();
+      if (ht < 1 && hl >= 1e-6) {
+        const nx = FWD.sx/hl, ny = FWD.sy/hl;
+        hctx.save(); clipHalf(H.x+nx*ht*hr, H.y+ny*ht*hr, nx, ny);
+        hctx.fillStyle = C_FRONT; circle(); hctx.restore();
+      }
+    }
+    if (FWD.d > 0) {
+      hctx.fillStyle = "#14202a";
+      for (const sx of [-0.40,0.40]) {
+        const e = S([sx*HEAD.r, HEAD.c[1]+0.03, HEAD.r*0.88]);
+        hctx.beginPath(); hctx.arc(e.x, e.y, Math.max(1.3,hr*.14), 0, Math.PI*2); hctx.fill();
+      }
+    }
+  }
+
+  ringPass(HORZ, true, "rgba(160,200,240,.42)", 1.4);
+  ringPass(VERT, true, "rgba(160,200,240,.30)", 1.4);
+}
+
+// 거리 눈금 — 휠이 바꾸는 값. 그림 위에 겹쳐 그린다.
 function drawHud(){
-  hctx.clearRect(0,0,VW,VH);
   hctx.strokeStyle="rgba(232,238,245,.10)"; hctx.lineWidth=1;
   hctx.strokeRect(14.5,14.5,VW-29,VH-29);
 
@@ -331,6 +486,22 @@ addEventListener("keydown",(ev)=>{
   else return;
   ev.preventDefault(); draw();
 });
+// ── 그림 고르기 — 마네킹(기본) ↔ 입체 모델 (사용자 지시 2026-09-11) ────────
+// 단추에는 **누르면 무엇이 되는지**를 적는다 (앱의 켜기·끄기 단추와 같은 방식이다).
+const btnMode = document.getElementById("btnMode");
+const legend = document.getElementById("legend");
+btnMode.disabled = !renderer;
+if (!renderer) btnMode.title = T("이 환경에서는 입체 모델을 띄울 수 없습니다 (WebGL 없음).");
+function setMode(m){
+  mode = m;
+  cv.style.display = m === "model" ? "block" : "none";
+  legend.hidden = m === "model";                 // 앞·뒤 색 안내는 마네킹에만 해당한다
+  if (m === "model") ensureModel(); else note("");
+  relabel();
+  draw();
+}
+btnMode.onclick = () => setMode(mode === "model" ? "doll" : "model");
+
 const mulN = document.getElementById("mulN");
 mulN.oninput = () => {
   const v = Number(mulN.value);
@@ -378,6 +549,8 @@ document.getElementById("btnCopy").onclick = async () => {
 // ── 앱 언어를 따라간다 (사용자 결정 2026-09-11 「공식 플러그인은 세 언어를 기본으로」) ──────────
 // 정적 문구는 `data-t` 표식이 달린 자리를 사전이 갈아 끼우고, 그린 것(상태 줄·눈금)은 여기서 다시 그린다.
 function relabel(){
+  btnMode.textContent = T(mode === "model" ? "마네킹으로" : "입체 모델로");
+  if (!renderer) btnMode.title = T("이 환경에서는 입체 모델을 띄울 수 없습니다 (WebGL 없음).");
   document.getElementById("hint").textContent =
     T("드래그로 둘러보기 · 휠로 거리. 넣기는 스타일 카드의 「{label}」 블록을 갈아 끼웁니다.", { label: cameraBlockLabel() });
   sync(); drawHud();
