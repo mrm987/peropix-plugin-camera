@@ -24,6 +24,7 @@
 -->
 <link rel="stylesheet" href="/plug/_app/base.css">
 <script src="/plug/_app/peropix.js"></script>
+<script src="i18n.js"></script>
 <script type="importmap">
 { "imports": { "three": "./lib/three.module.min.js" } }
 </script>
@@ -45,26 +46,26 @@
 </head>
 <body>
 <header>
-  <button class="primary" id="btnPut" data-put>지금 씬에 넣기</button>
-  <button id="btnCopy" data-copy>복사</button>
-  <span class="muted spacer">드래그로 둘러보기 · 휠로 거리. 넣기는 스타일 카드의 「카메라」 블록을 갈아 끼웁니다.</span>
+  <button class="primary" id="btnPut" data-put data-t="지금 씬에 넣기">지금 씬에 넣기</button>
+  <button id="btnCopy" data-copy data-t="복사">복사</button>
+  <span class="muted spacer" id="hint"></span>
 </header>
 
 <main>
   <div class="stage"><div id="view"><canvas id="cv"></canvas><canvas id="hud"></canvas></div></div>
   <div class="row stat">
-    <span>방위 <b id="vAz">정면</b> · 높이 <b id="vEl">수평</b> · 거리 <b id="vDist">전신</b></span>
+    <span><span data-t="방위">방위</span> <b id="vAz"></b> · <span data-t="높이">높이</span> <b id="vEl"></b> · <span data-t="거리">거리</span> <b id="vDist"></b></span>
   </div>
   <pre id="out"></pre>
   <div class="row mulrow">
-    <label for="mulN">배율</label>
+    <label for="mulN" data-t="배율">배율</label>
     <input type="number" id="mulN" min="0.1" max="5" step="0.1" value="1.0">
-    <span class="muted">모든 가중치에 곱합니다. 실측 최적 1.0 · 2.5 부근부터 그림이 무너집니다.</span>
+    <span class="muted" data-t="모든 가중치에 곱합니다. 실측 최적 1.0 · 2.5 부근부터 그림이 무너집니다.">모든 가중치에 곱합니다. 실측 최적 1.0 · 2.5 부근부터 그림이 무너집니다.</span>
   </div>
   <div class="muted" id="note"></div>
 </main>
 
-<footer><b>드래그</b> 둘러보기 · <b>휠</b> 거리 · <b>← →</b> 방위 · <b>↑ ↓</b> 높이 · <b>Home</b> 정면</footer>
+<footer><b data-t="드래그">드래그</b> <span data-t="둘러보기">둘러보기</span> · <b data-t="휠">휠</b> <span data-t="거리">거리</span> · <b>&larr; &rarr;</b> <span data-t="방위">방위</span> · <b>&uarr; &darr;</b> <span data-t="높이">높이</span> · <b>Home</b> <span data-t="정면으로">정면으로</span></footer>
 
 <script type="module">
 import * as THREE from "three";
@@ -96,12 +97,14 @@ const FRAME = [ {c:1.62,h:0.46}, {c:1.30,h:1.06}, {c:1.06,h:1.56},
                 {c:0.92,h:2.08}, {c:0.92,h:3.40}, {c:0.92,h:6.00} ];
 const DIST = [];
 for (let k = 0; k < RUNG.length; k++) {
-  DIST.push({ tags:[RUNG[k]], kr:RUNG_KR[k], f:FRAME[k], mix:false });
+  DIST.push({ tags:[RUNG[k]], rungs:[k], f:FRAME[k], mix:false });
   if (k < RUNG.length-1) DIST.push({
-    tags:[RUNG[k],RUNG[k+1]], kr:RUNG_KR[k]+"+"+RUNG_KR[k+1], mix:true,
+    tags:[RUNG[k],RUNG[k+1]], rungs:[k,k+1], mix:true,
     f:{ c:(FRAME[k].c+FRAME[k+1].c)/2, h:(FRAME[k].h+FRAME[k+1].h)/2 } });
 }
 
+/** 거리 칸의 이름표 — 지금 언어로. 섞인 칸은 두 이름을 붙인다 */
+const distName = (d) => d.rungs.map(i=>T(RUNG_KR[i])).join("+");
 const DIR = { front:"from front", back:"from behind", left:"from right", right:"from left" };
 const DEADZONE = 0.2;
 // ★순수 측면(x = ±0.5)만 총량이 3.0 이다. 2.0 으로는 `full body` 의 정면 편향에 밀려
@@ -173,7 +176,7 @@ try {
   renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
   renderer.setClearColor(0x10141a, 1);
 } catch (e) {
-  note("이 환경에서는 입체 그림을 그릴 수 없습니다 (WebGL 없음). 태그 만들기는 그대로 됩니다.");
+  note(T("이 환경에서는 입체 그림을 그릴 수 없습니다 (WebGL 없음). 태그 만들기는 그대로 됩니다."));
 }
 
 if (renderer) {
@@ -198,13 +201,13 @@ if (renderer) {
   ring((t)=> new THREE.Vector3(0, ORB_Y + Math.sin(t)*ORB_R, Math.cos(t)*ORB_R), 0x8cb4e1, 0.30);
   ring((t)=> new THREE.Vector3(Math.cos(t)*ORB_R, 0, Math.sin(t)*ORB_R), 0x75b9ff, 0.22);
 
-  note("모델을 불러오는 중…");
+  note(T("모델을 불러오는 중…"));
   new GLTFLoader().load("./model/character.glb", (gltf) => {
     model = gltf.scene;
     scene.add(model);
     note("");
     draw();
-  }, undefined, (err) => note("모델을 불러오지 못했습니다: " + (err && err.message ? err.message : err)));
+  }, undefined, (err) => note(T("모델을 불러오지 못했습니다: {e}", { e: (err && err.message) ? err.message : err })));
 }
 
 /* ★★**늘리는 것이 아니라 그 크기로 다시 그린다** (사용자 지적 2026-09-10: 창을 키우면 그림만 확대돼 이상하다).
@@ -262,12 +265,12 @@ function drawHud(){
     hctx.beginPath(); hctx.moveTo(gx-(named?12:6), at(i)); hctx.lineTo(gx, at(i)); hctx.stroke();
     if (named) {
       hctx.fillStyle = i === distIdx ? "#e8eef5" : "rgba(232,238,245,.36)";
-      hctx.font = (i === distIdx ? "600 " : "") + "10px 'Malgun Gothic',sans-serif";
-      hctx.fillText(DIST[i].kr, gx-16, at(i)+3);
+      hctx.font = (i === distIdx ? "600 " : "") + "10px system-ui,sans-serif";
+      hctx.fillText(distName(DIST[i]), gx-16, at(i)+3);
     }
   }
-  hctx.fillStyle = "rgba(232,238,245,.34)"; hctx.font = "10px 'Malgun Gothic',sans-serif";
-  hctx.fillText("거리", gx+4, gyT-13);
+  hctx.fillStyle = "rgba(232,238,245,.34)"; hctx.font = "10px system-ui,sans-serif";
+  hctx.fillText(T("거리"), gx+4, gyT-13);
   hctx.fillStyle = "#7fb9f0";
   hctx.beginPath(); hctx.arc(gx, at(distIdx), 5.5, 0, Math.PI*2); hctx.fill();
 }
@@ -289,9 +292,9 @@ function sync(){
   document.getElementById("out").textContent = parts.join(", ") + (parts.length?",":"");
   const deg = Math.round(x*180);
   document.getElementById("vAz").textContent =
-    Math.abs(deg)===180 ? "후면" : deg===0 ? "정면" : (deg>0?"오른쪽 ":"왼쪽 ")+Math.abs(deg)+"°";
-  document.getElementById("vEl").textContent = e.kr;
-  document.getElementById("vDist").textContent = d.kr;
+    Math.abs(deg)===180 ? T("후면") : deg===0 ? T("정면") : T(deg>0?"오른쪽 {d}°":"왼쪽 {d}°", { d: Math.abs(deg) });
+  document.getElementById("vEl").textContent = T(e.kr);
+  document.getElementById("vDist").textContent = distName(d);
 }
 
 // ── 조작 ───────────────────────────────────────────────────────────────────
@@ -332,27 +335,56 @@ mulN.oninput = () => {
 };
 
 // ── 앱에 넣기 · 복사 ────────────────────────────────────────────────────────
-const LABEL = "카메라";
+// ★★이름표는 **`<플러그인>_<블록>`** 꼴이다 (사용자 지시 2026-09-11): 사용자가 손으로 만든 블록과 겹치지 않고,
+//   넣기가 **내 블록만** 골라 지울 수 있다. 언어를 바꾸면 이름표도 바뀌므로, 넣기 전에 **다른 언어로 넣어 둔 것까지**
+//   걷어 낸다 (`cameraPrefixes()` 가 세 언어의 접두어를 준다).
 const btnPut = document.getElementById("btnPut");
 btnPut.disabled = !inApp;
+/** 지금 씬의 스타일 카드에서 내가 넣었던 블록을 지운다 — `peropix.scene()` 은 화면에 살아 있는 상태다 */
+async function clearMine(){
+  if (!peropix.scene) return;
+  const sc = await peropix.scene().catch(() => null);
+  const pre = cameraPrefixes();
+  for (const b of ((sc && sc.base) || [])) {
+    const L = String((b && b.label) || "");
+    if (L !== cameraBlockLabel() && pre.some((x) => L.indexOf(x) === 0))
+      await peropix.call({ call: "action", name: "edit_style_card", args: { label: L, tags: "", mode: "remove", block: b.id } });
+  }
+}
 btnPut.onclick = async () => {
   const tags = promptTags().join(", ");
-  btnPut.disabled = true; note("넣는 중…");
+  const LABEL = cameraBlockLabel();
+  btnPut.disabled = true; note(T("넣는 중…"));
   try {
+    await clearMine();
     // 같은 이름의 블록이 하나 있으면 갈아 끼우고, 없으면 새로 붙인다 (여럿이면 앱이 되묻는 대신 새로 붙인다)
     let r = await peropix.call({ call: "action", name: "edit_style_card", args: { label: LABEL, tags, mode: "replace", block: "" } });
     const failed = !r.ok || (r.result && r.result.error);
     if (failed) r = await peropix.call({ call: "action", name: "edit_style_card", args: { label: LABEL, tags, mode: "add" } });
-    if (!r.ok) note("앱이 거절했습니다: " + r.error);
-    else if (r.result && r.result.error) note("앱이 거절했습니다: " + (r.result.error.message || JSON.stringify(r.result.error)));
-    else { note((r.result && r.result.did) || "넣었습니다."); peropix.toast("카메라 구도를 스타일 카드에 넣었습니다"); }
+    if (!r.ok) note(T("앱이 거절했습니다: {e}", { e: r.error }));
+    else if (r.result && r.result.error) note(T("앱이 거절했습니다: {e}", { e: r.result.error.message || JSON.stringify(r.result.error) }));
+    else { note((r.result && r.result.did) || T("넣었습니다.")); peropix.toast(T("카메라 구도를 스타일 카드에 넣었습니다")); }
   } finally { btnPut.disabled = false; }
 };
 document.getElementById("btnCopy").onclick = async () => {
   const s = promptTags().join(", ") + ",";
-  try { await navigator.clipboard.writeText(s); note("복사했습니다."); }
-  catch { const ta = document.createElement("textarea"); ta.value = s; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); note("복사했습니다."); }
+  try { await navigator.clipboard.writeText(s); note(T("복사했습니다.")); }
+  catch { const ta = document.createElement("textarea"); ta.value = s; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); note(T("복사했습니다.")); }
 };
+
+// ── 앱 언어를 따라간다 (사용자 결정 2026-09-11 「공식 플러그인은 세 언어를 기본으로」) ──────────
+// 정적 문구는 `data-t` 표식이 달린 자리를 사전이 갈아 끼우고, 그린 것(상태 줄·눈금)은 여기서 다시 그린다.
+function relabel(){
+  document.getElementById("hint").textContent =
+    T("드래그로 둘러보기 · 휠로 거리. 넣기는 스타일 카드의 「{label}」 블록을 갈아 끼웁니다.", { label: cameraBlockLabel() });
+  sync(); drawHud();
+}
+(async () => {
+  let l = "ko";
+  try { l = await peropix.locale(); } catch (e) { l = (navigator.language || "ko").slice(0, 2); }
+  setCameraLang(l); relabel();
+  if (peropix.onLocale) peropix.onLocale((x) => { setCameraLang(x); relabel(); });
+})();
 draw();
 </script>
 </body>

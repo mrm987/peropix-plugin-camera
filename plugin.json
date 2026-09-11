@@ -1,12 +1,20 @@
 {
   "id": "camera",
-  "name": "카메라 구도",
-  "version": "1.1.0",
-  "description": "인물을 돌려 보며 방위·높이·거리를 고르면 구도 태그와 가중치를 만든다. 「지금 씬에 넣기」가 스타일 카드의 「카메라」 블록을 갈아 끼운다.",
+  "name": {
+    "ko": "카메라 구도",
+    "en": "Camera Framing",
+    "ja": "カメラ構図"
+  },
+  "version": "1.2.0",
+  "description": {
+    "ko": "인물을 돌려 보며 방위·높이·거리를 고르면 구도 태그와 가중치를 만든다. 「지금 씬에 넣기」가 스타일 카드의 「카메라_구도」 블록을 갈아 끼운다.",
+    "en": "Turn the figure around and pick an azimuth, height and distance; the plugin writes the framing tags with their weights. “Insert into the scene” replaces the style card's “Camera_Framing” block.",
+    "ja": "人物を回しながら方位・高さ・距離を選ぶと、構図タグと重みを作ります。「現在のシーンに入れる」はスタイルカードの「カメラ_構図」ブロックを差し替えます。"
+  },
   "web": "web",
   "canvas": { "width": 640, "height": 600, "minWidth": 420, "minHeight": 360 },
   "contributes": {
     "canvas": true,
-    "buttons": [{ "slot": "generate.footer", "label": "카메라", "do": "openCanvas" }]
+    "buttons": [{ "slot": "generate.footer", "label": { "ko": "카메라", "en": "Camera", "ja": "カメラ" }, "do": "openCanvas" }]
   }
 }
