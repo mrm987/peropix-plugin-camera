@@ -287,10 +287,15 @@ function ensureModel(){
    그리는 코드는 720×520 좌표계 그대로 두고, 화면에 놓인 실제 크기만큼 변환을 걸어 준다 — 어느 크기에서도 선이 또렷하다.
    `.stage` 가 비율을 지켜 주므로 찌그러지지 않는다. */
 const stage = view.parentElement;   // `.stage` — 본문에서 남는 자리
+/* ★그림판이 줄어든 배수. **글자는 이 배수를 거슬러 그린다** (사용자 지적 2026-09-11: 눈금 글자가
+   다른 글자보다 훨씬 작다). 그림은 720×520 좌표계째 줄어드는 것이 맞지만, 글자는 창 크기와 상관없이
+   화면에서 같은 크기로 읽혀야 한다 — 작은 창에서는 배수가 0.47 까지 내려가 13px 가 6px 로 보였다. */
+let fitK = 1;
+const ui = (px) => px / fitK;      // 화면에서 `px` 로 보이게 하는 좌표계 크기
 function fit(){
   const dpr = Math.min(devicePixelRatio||1,2);
   const box = stage.getBoundingClientRect();
-  const k = Math.max(0.2, Math.min(box.width/VW, box.height/VH));   // 그 자리에 들어가는 가장 큰 배수
+  const k = fitK = Math.max(0.2, Math.min(box.width/VW, box.height/VH));   // 그 자리에 들어가는 가장 큰 배수
   const w = Math.floor(VW*k), h = Math.floor(VH*k);
   view.style.width = w+"px"; view.style.height = h+"px";            // 비율 그대로, 넘치지 않게
   if (renderer) { renderer.setPixelRatio(dpr); renderer.setSize(w, h, false); }
@@ -455,14 +460,13 @@ function drawHud(){
     hctx.beginPath(); hctx.moveTo(gx-(named?12:6), at(i)); hctx.lineTo(gx, at(i)); hctx.stroke();
     if (named) {
       hctx.fillStyle = i === distIdx ? "#e8eef5" : "rgba(232,238,245,.40)";
-      // ★그림판은 720×520 좌표계를 창 크기로 줄여 그린다 — 10px 로는 창 밖의 글자보다 훨씬 작아 보였다
-      //   (사용자 지적 2026-09-11). 본문 글자와 비슷하게 읽히도록 13px 로 둔다.
-      hctx.font = (i === distIdx ? "600 " : "") + "13px system-ui,sans-serif";
-      hctx.fillText(distName(DIST[i]), gx-16, at(i)+4.5);
+      // ★크기는 **화면 기준**이다 (`ui()`) — 창을 줄여도 다른 글자와 같게 읽힌다
+      hctx.font = (i === distIdx ? "600 " : "") + ui(12).toFixed(1) + "px system-ui,sans-serif";
+      hctx.fillText(distName(DIST[i]), gx-16, at(i)+ui(4));
     }
   }
-  hctx.fillStyle = "rgba(232,238,245,.38)"; hctx.font = "12px system-ui,sans-serif";
-  hctx.fillText(T("거리"), gx+4, gyT-15);
+  hctx.fillStyle = "rgba(232,238,245,.38)"; hctx.font = ui(11).toFixed(1) + "px system-ui,sans-serif";
+  hctx.fillText(T("거리"), gx+4, gyT-ui(13));
   hctx.fillStyle = "#7fb9f0";
   hctx.beginPath(); hctx.arc(gx, at(distIdx), 5.5, 0, Math.PI*2); hctx.fill();
 }
