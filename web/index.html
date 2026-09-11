@@ -25,10 +25,9 @@
       `lib/` 안의 배치(`three.module.min.js` + `three.core.min.js` · `loaders/` · `utils/`)는 배포본 그대로다 —
       그 파일들이 서로를 상대 경로로 부르므로 옮기면 깨진다. 이름표 `three` 는 문서 머리의 importmap 이 이어 준다.
     · 앞·뒤를 색으로 갈라 칠하던 것을 걷었다. 얼굴·꼬리·모자가 있으니 방향은 모습으로 안다.
-    · ★거리 표(`FRAME`)는 **사람 비율(발 0 · 머리끝 1.795) 그대로 둔다.** 그 값들은 생성 결과로 맞춘 것이라
-      정본이고, 대신 그릴 때 `toModel()` 이 **같은 부위끼리** 옮겨 준다 (아래 `MARK` 표). 그래서 3등신 모델에서도
+    · ★거리 표(`FRAME`)는 **사람 비율(발 0 · 머리끝 1.795)로 적는다.** 모델에 맞춰 고치지 말고,
+      그릴 때 `toModel()` 이 **같은 부위끼리** 옮기게 한다 (아래 `MARK` 표). 그래서 3등신 모델에서도
       「얼굴」은 얼굴이, 「허벅지」는 허벅지가 화면에 담긴다. 모델을 바꾸면 `MARK` 만 다시 재면 된다.
-      (2026-09-11: 넓은 칸에서는 이 부위 맞춤을 **비율 맞춤과 섞는다** — 까닭은 `frameOf()` 에 적었다.)
 -->
 <link rel="stylesheet" href="/plug/_app/base.css">
 <script src="/plug/_app/peropix.js"></script>
@@ -124,9 +123,15 @@ const EL = [
 
 const RUNG = ["portrait","upper body","cowboy shot","full body","wide shot","very wide shot"];
 const RUNG_KR = ["얼굴","상반신","허벅지","전신","원경","광각"];
-// 칸마다 화면에 담을 몸의 범위 — { 중심 높이, 담을 높이 } (발 0, 머리끝 1.8 기준)
-const FRAME = [ {c:1.62,h:0.46}, {c:1.30,h:1.06}, {c:1.06,h:1.56},
-                {c:0.92,h:2.08}, {c:0.92,h:3.40}, {c:0.92,h:6.00} ];
+/* 칸마다 화면에 담을 몸의 범위 — { 중심 높이, 담을 높이 } (발 0 · 사타구니 0.90 · 허리 1.05 ·
+   가슴 1.28 · 어깨 1.36 · 턱 1.485 · 머리끝 1.795 인 사람 기준)
+   ★★2026-09-11 에 아래 끝을 **태그가 뜻하는 자리**로 맞췄다 (사용자 지적: *"거리 칸이 안 맞는다"*).
+     앞의 값은 「상반신」 이 허벅지 중간(0.77)까지, 「허벅지」 가 정강이(0.28)까지 내려가 한 칸씩 넓었다.
+     기준은 danbooru 의 태그 뜻이다 — portrait 는 가슴 위, upper body 는 허리 위,
+     cowboy shot 은 허벅지(무릎 바로 위까지), full body 는 전신.
+     위 끝은 1.86 으로 맞춰 머리 위 여백을 칸마다 같게 둔다 (전신부터는 더 물러난다). */
+const FRAME = [ {c:1.58,h:0.56}, {c:1.445,h:0.83}, {c:1.24,h:1.24},
+                {c:0.90,h:2.00}, {c:0.92,h:3.40}, {c:0.92,h:6.00} ];
 const DIST = [];
 for (let k = 0; k < RUNG.length; k++) {
   DIST.push({ tags:[RUNG[k]], rungs:[k], f:FRAME[k], mix:false });
@@ -155,7 +160,7 @@ function azTags(x){
 }
 
 // ── 사람 비율 ↔ 이 모델의 같은 부위 ────────────────────────────────────────
-/* ★거리 표(`FRAME`)는 **키 1.8 의 사람**을 담는 값이고 바꾸지 않는다 (생성 결과로 맞춘 정본).
+/* ★거리 표(`FRAME`)는 **키 1.8 의 사람**을 담는 값이다 (태그가 뜻하는 자리로 맞춰 둔 것 — 위 표 참조).
    이 모델은 3등신이라 같은 숫자를 그대로 쓰면 「얼굴」에서 입이 잘린다 — 그래서 화면에 담을 위아래 끝을
    **부위끼리 짝지어** 옮긴다. 모델 값은 GLB 의 노드별 경계 상자를 실제로 재서 얻었다 (2026-09-10). */
 const MARK = [
@@ -183,16 +188,14 @@ function toModel(y){
 }
 /** 거리 칸 → 모델 좌표의 { 가운데, 담을 높이 }
  *
- *  ★★칸이 넓어질수록 **부위 맞춤에서 비율 맞춤으로 옮겨 간다** (사용자 지적 2026-09-11:
- *    *"upper body 인데 실제론 발 끝에 닿는다"*). 이 모델은 머리가 키의 40% 라, 부위를 맞추면
- *    몸 칸에서 사람보다 훨씬 많이 담긴다 — 실측으로 「상반신」 칸에 **몸의 77%** 가 들어왔다
- *    (같은 칸의 사람 마네킹은 57%). 반대로 비율만 맞추면 「얼굴」 칸에서 입이 잘린다 (2026-09-10).
- *    그래서 좁은 칸(얼굴)은 부위를, 넓은 칸(상반신부터)은 비율을 맞추고 그 사이는 반반 섞는다. */
+ *  ★★**부위끼리 옮기는 것이 전부다.** 2026-09-11 에 「칸이 넓어질수록 비율 맞춤으로 옮겨 가는」
+ *    혼합을 잠깐 넣었다가 걷었다 — 사용자가 지적한 *"upper body 인데 발 끝에 닿는다"* 의 원인은
+ *    매핑이 아니라 **거리 표(`FRAME`) 자체가 한 칸씩 넓었던 것**이었고, 표를 바로잡으니 부위 맞춤만으로
+ *    제자리에 온다 (상반신 → 허리 · 허벅지 → 허벅지 중간). 혼합은 오히려 얼굴과 상반신을 같은
+ *    크롭으로 만들어 계단을 뭉갰다. 증상을 덮기 전에 원인 쪽을 본다. */
 function frameOf(i){
   const f = DIST[i].f;
-  const t = Math.max(0, Math.min(1, (f.h - FRAME[0].h) / (FRAME[1].h - FRAME[0].h)));
-  const mix = (y) => { const p = toModel(y); return p + (y*OUT_K - p)*t; };
-  const bot = mix(f.c - f.h/2), top = mix(f.c + f.h/2);
+  const bot = toModel(f.c - f.h/2), top = toModel(f.c + f.h/2);
   return { mid:(bot+top)/2, h:Math.max(0.02, top-bot) };
 }
 
@@ -451,13 +454,15 @@ function drawHud(){
     hctx.lineWidth = named ? 1.6 : 1;
     hctx.beginPath(); hctx.moveTo(gx-(named?12:6), at(i)); hctx.lineTo(gx, at(i)); hctx.stroke();
     if (named) {
-      hctx.fillStyle = i === distIdx ? "#e8eef5" : "rgba(232,238,245,.36)";
-      hctx.font = (i === distIdx ? "600 " : "") + "10px system-ui,sans-serif";
-      hctx.fillText(distName(DIST[i]), gx-16, at(i)+3);
+      hctx.fillStyle = i === distIdx ? "#e8eef5" : "rgba(232,238,245,.40)";
+      // ★그림판은 720×520 좌표계를 창 크기로 줄여 그린다 — 10px 로는 창 밖의 글자보다 훨씬 작아 보였다
+      //   (사용자 지적 2026-09-11). 본문 글자와 비슷하게 읽히도록 13px 로 둔다.
+      hctx.font = (i === distIdx ? "600 " : "") + "13px system-ui,sans-serif";
+      hctx.fillText(distName(DIST[i]), gx-16, at(i)+4.5);
     }
   }
-  hctx.fillStyle = "rgba(232,238,245,.34)"; hctx.font = "10px system-ui,sans-serif";
-  hctx.fillText(T("거리"), gx+4, gyT-13);
+  hctx.fillStyle = "rgba(232,238,245,.38)"; hctx.font = "12px system-ui,sans-serif";
+  hctx.fillText(T("거리"), gx+4, gyT-15);
   hctx.fillStyle = "#7fb9f0";
   hctx.beginPath(); hctx.arc(gx, at(distIdx), 5.5, 0, Math.PI*2); hctx.fill();
 }
