@@ -11,6 +11,7 @@
     "en": "Turn the figure around and pick an azimuth, height and distance; the plugin writes the framing tags with their weights. “Insert into the scene” replaces the style card's “Camera_Framing” block.",
     "ja": "人物を回しながら方位・高さ・距離を選ぶと、構図タグと重みを作ります。「現在のシーンに入れる」はスタイルカードの「カメラ_構図」ブロックを差し替えます。"
   },
+  "homepage": "https://github.com/mrm987/peropix-plugin-camera",
   "web": "web",
   "canvas": { "width": 640, "height": 600, "minWidth": 420, "minHeight": 360 },
   "contributes": {
