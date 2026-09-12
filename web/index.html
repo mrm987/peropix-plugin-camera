@@ -66,8 +66,12 @@
           background: none; border: 1px solid rgba(236,236,241,.28); color: rgba(236,236,241,.5);
           font-size: var(--text-3xs); line-height: 1; justify-content: center; }
   #help:hover { border-color: var(--accent); color: var(--ink); }
-  /* 넣을 태그 — 날문자열 대신 가중치 칩 */
-  #out { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+  /* 넣을 태그 — 날문자열 대신 가중치 칩. 한 상자에 배율까지 담는다 */
+  /* ★★칩이 늘어도 **그림판을 밀지 않는다** (사용자 지적 2026-09-12: 줄이 늘면 구도 조정 화면이 움직인다).
+     상자 높이를 **고정**하고 넘치면 상자 안에서 스크롤한다 — 칩이 한 줄이든 세 줄이든 그림판 자리가 그대로다. */
+  #outbox { flex: 0 0 auto; display: flex; align-items: center; gap: var(--sp-3);
+            padding: var(--sp-3) var(--sp-4); height: 76px; overflow: auto; }
+  #out { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; flex: 1; min-width: 0; }
   .wchip { display: inline-flex; align-items: baseline; gap: 5px; padding: 3px var(--sp-4); border-radius: 999px;
            border: 1px solid var(--line); background: var(--code-bg); font-family: var(--font-mono); font-size: var(--text-2xs); }
   .wchip b { font-weight: var(--w-semi); color: var(--accent-ink); font-size: var(--text-3xs); }
@@ -87,7 +91,7 @@
   <div class="row stat">
     <span><span data-t="방위">방위</span> <b id="vAz"></b> · <span data-t="높이">높이</span> <b id="vEl"></b> · <span data-t="거리">거리</span> <b id="vDist"></b></span>
   </div>
-  <div class="row">
+  <div class="card" id="outbox">
     <div id="out"></div>
     <span class="spacer"></span>
     <label for="mulN" data-t="배율">배율</label>
