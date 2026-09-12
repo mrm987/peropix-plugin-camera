@@ -8,10 +8,13 @@
   카메라 위치를 고르는 게 아니라 **보이는 모습**을 보면서 옮긴다. 설 수 있는 자리는 실측으로 확정한 것뿐이다
   (방위 16 · 높이 12 · 거리 11).
   ★★**작은 앱의 본보기다** (사용자 지시 2026-09-10: *"박스 자체가 앱인 느낌"*). 앱이 주는 공통 자산 두 줄만 쓰고,
-    창 골격은 `header`(도구줄) · `main`(본문) · `footer`(상태줄) 로 짠다 — 창을 키우면 **그림판만** 커진다.
+    창 골격은 `main`(본문) · `footer`(단추 줄) 로 짠다 — 창을 키우면 **그림판만** 커진다.
+    ★★2026-09-12: 시선 순서대로 세웠다 (사용자 지시) — 그림판(조작) > 방위·높이·거리 > 태그 > 단추.
+      단추가 맨 위 도구줄에 있어 결과를 보고 다시 올라가야 했다. 안내문(도구줄 한 줄 · 푸터 키 안내 ·
+      배율 옆 설명)은 전부 걷고, 조작법은 그림판 구석의 「?」 에 감췄다.
   ★그림판은 늘어나는 것이 아니라 **그 크기로 다시 그린다** (`fit()`): 어떤 크기에서도 선이 또렷하다.
 
-  ★★2026-09-11: **기본은 캡슐 마네킹이고, 도구줄 끝의 경찰 모자를 누르면 입체 모델로 바뀐다** (사용자 지시).
+  ★★2026-09-11: **기본은 캡슐 마네킹이고, 경찰 모자를 누르면 입체 모델로 바뀐다** (사용자 지시).
     · 모자는 **히든 요소다** — 이름표도 설명도 달지 않는다. 눌러 본 사람만 입체 모델을 만난다.
     · 마네킹은 2D 캔버스(`hud`)에 직접 그린다 — 앞뒤를 **색**으로 갈라 칠하므로 방위가 한눈에 들어오고,
       사람 비율(키 1.8) 그대로라 거리 표(`FRAME`)를 옮길 필요가 없다 (`toModel()` 은 입체 모델 전용이다).
@@ -36,11 +39,9 @@
 { "imports": { "three": "./lib/three.module.min.js" } }
 </script>
 <style>
-  /* 그림판 안의 색은 앱 토큰이 아니라 **이 그림의 팔레트**다 — 3D 뷰포트처럼 테마와 무관하게 어둡다 */
-  /* ★그림판 **밖**의 글자는 테마를 따라간다 (사용자 지적 2026-09-11: 밝은 테마에서 금색이 배경에 묻힌다).
-     `base.css` 와 같은 방식으로 `prefers-color-scheme` 을 본다 — 앱이 프레임의 color-scheme 을 바꿔 주므로 따라온다. */
-  :root { --gold: #8a5a00; }                                  /* 밝은 테마 — 흰 바탕에서 읽히는 진한 호박색 */
-  @media (prefers-color-scheme: dark) { :root { --gold: #ffd76b; } }
+  /* 그림판 안의 색은 앱 토큰이 아니라 **이 그림의 팔레트**다 — 3D 뷰포트처럼 테마와 무관하게 어둡다.
+     그림판 **밖**은 앱 토큰만 쓴다 (2026-09-12: 값 강조에 쓰던 금색을 걷고 `--accent-ink` 로 모았다 —
+     강조가 한 색이라야 눈이 덜 흩어진다). */
   main { gap: var(--sp-4); }
   /* 그림판 — 남는 자리를 채우되 비율을 지킨다 (`.stage` 가 가운데 정렬) */
   /* 크기는 `fit()` 이 px 로 정한다 — 남는 자리에 들어가는 가장 큰 720:520 상자 */
@@ -48,25 +49,54 @@
   #view:active { cursor: grabbing; }
   #cv, #hud { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   #hud { pointer-events: none; }
-  #out { margin: 0; color: #fff2a6; background: #10141a; }
-  .stat b { color: var(--gold); font-weight: var(--w-semi); }
+  .stat b { color: var(--accent-ink); font-weight: var(--w-semi); }
   /* 마네킹의 앞·뒤 색을 알려 주는 자리 — 입체 모델에서는 숨는다 */
   .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: -1px; }
-  /* 히든 요소 — 도구줄 끝에 흐릿하게 앉은 경찰 모자. 입체 모델을 켜 두면 또렷해진다 */
+  /* 히든 요소 — 단추 줄 왼쪽 끝에 흐릿하게 앉은 경찰 모자. 입체 모델을 켜 두면 또렷해진다 */
   #btnMode { padding: 2px 3px; background: none; border: 0; box-shadow: none; opacity: .16;
              line-height: 0; cursor: pointer; color: inherit; }
   #btnMode:hover { opacity: .5; }
   #btnMode[data-mode="model"] { opacity: .75; }
   #btnMode:disabled { display: none; }        /* 입체 그림을 못 그리는 환경에서는 아예 없다 */
-  .mulrow input { width: 78px; color: var(--gold); font-family: var(--font-mono); }
   #note { min-height: 16px; }
+  /* 그림판 위에 얹는 것 — 앞·뒤 색과 조작법 */
+  #legend, #help { position: absolute; bottom: 10px; z-index: 2; }
+  #legend { left: 12px; display: flex; align-items: center; gap: 5px; font-size: var(--text-3xs); color: rgba(236,236,241,.5); }
+  #help { right: 10px; width: 18px; height: 18px; padding: 0; min-height: 0; border-radius: 50%;
+          background: none; border: 1px solid rgba(236,236,241,.28); color: rgba(236,236,241,.5);
+          font-size: var(--text-3xs); line-height: 1; justify-content: center; }
+  #help:hover { border-color: var(--accent); color: var(--ink); }
+  /* 넣을 태그 — 날문자열 대신 가중치 칩 */
+  #out { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+  .wchip { display: inline-flex; align-items: baseline; gap: 5px; padding: 3px var(--sp-4); border-radius: 999px;
+           border: 1px solid var(--line); background: var(--code-bg); font-family: var(--font-mono); font-size: var(--text-2xs); }
+  .wchip b { font-weight: var(--w-semi); color: var(--accent-ink); font-size: var(--text-3xs); }
+  #mulN { width: 62px; font-family: var(--font-mono); }
+  /* 단추는 결과 다음에 온다 — 눈이 지나온 순서대로 (사용자 지시 2026-09-12) */
+  footer { gap: var(--sp-2); }
 </style>
 </head>
 <body>
-<header>
-  <button class="primary" id="btnPut" data-put data-t="지금 씬에 넣기">지금 씬에 넣기</button>
-  <button id="btnCopy" data-copy data-t="복사">복사</button>
-  <span class="muted spacer" id="hint"></span>
+<main>
+  <div class="stage"><div id="view">
+    <canvas id="cv"></canvas><canvas id="hud"></canvas>
+    <span id="legend"><i class="sw" style="background:#7fb9f0"></i> <span data-t="앞">앞</span>
+      &nbsp;<i class="sw" style="background:#d98a5c"></i> <span data-t="뒤">뒤</span></span>
+    <button id="help" data-t-title="드래그 둘러보기 · 휠 거리 · ←→ 방위 · ↑↓ 높이 · Home 정면">?</button>
+  </div></div>
+  <div class="row stat">
+    <span><span data-t="방위">방위</span> <b id="vAz"></b> · <span data-t="높이">높이</span> <b id="vEl"></b> · <span data-t="거리">거리</span> <b id="vDist"></b></span>
+  </div>
+  <div class="row">
+    <div id="out"></div>
+    <span class="spacer"></span>
+    <label for="mulN" data-t="배율">배율</label>
+    <input type="number" id="mulN" min="0.1" max="5" step="0.1" value="1.0">
+  </div>
+  <div class="muted" id="note"></div>
+</main>
+
+<footer>
   <!-- 히든 요소 (사용자 지시 2026-09-11): 이름표 없이 경찰 모자만 둔다. 눌러 본 사람만 입체 모델을 만난다 -->
   <button id="btnMode" data-mode="doll">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -76,27 +106,10 @@
       <path d="M12 6.3l1.4 1.1-.6 1.8h-1.6l-.6-1.8z"/>
     </svg>
   </button>
-</header>
-
-<main>
-  <div class="stage"><div id="view"><canvas id="cv"></canvas><canvas id="hud"></canvas></div></div>
-  <div class="row stat">
-    <span><span data-t="방위">방위</span> <b id="vAz"></b> · <span data-t="높이">높이</span> <b id="vEl"></b> · <span data-t="거리">거리</span> <b id="vDist"></b></span>
-    <span class="muted spacer" id="legend" style="text-align:right">
-      <i class="sw" style="background:#7fb9f0"></i> <span data-t="앞">앞</span>
-      &nbsp;<i class="sw" style="background:#d98a5c"></i> <span data-t="뒤">뒤</span>
-    </span>
-  </div>
-  <pre id="out"></pre>
-  <div class="row mulrow">
-    <label for="mulN" data-t="배율">배율</label>
-    <input type="number" id="mulN" min="0.1" max="5" step="0.1" value="1.0">
-    <span class="muted" data-t="모든 가중치에 곱합니다. 실측 최적 1.0 · 2.5 부근부터 그림이 무너집니다.">모든 가중치에 곱합니다. 실측 최적 1.0 · 2.5 부근부터 그림이 무너집니다.</span>
-  </div>
-  <div class="muted" id="note"></div>
-</main>
-
-<footer><b data-t="드래그">드래그</b> <span data-t="둘러보기">둘러보기</span> · <b data-t="휠">휠</b> <span data-t="거리">거리</span> · <b>&larr; &rarr;</b> <span data-t="방위">방위</span> · <b>&uarr; &darr;</b> <span data-t="높이">높이</span> · <b>Home</b> <span data-t="정면으로">정면으로</span></footer>
+  <span class="spacer"></span>
+  <button id="btnCopy" data-copy data-t="복사">복사</button>
+  <button class="primary" id="btnPut" data-put data-t="지금 씬에 넣기">지금 씬에 넣기</button>
+</footer>
 
 <script type="module">
 import * as THREE from "three";
@@ -472,20 +485,25 @@ function drawHud(){
 }
 
 // ── 출력 ───────────────────────────────────────────────────────────────────
-function promptTags(){
+/** 넣을 태그 — `{ tag, w }` 로 낸다. `w` 는 배율까지 곱한 값이다 */
+function promptParts(){
   const x = AZ_PINS[azIdx], e = EL[elIdx], d = DIST[distIdx];
-  // ★가중치 1.00 은 안 적는다 — `1.00::tag::` 와 `tag` 는 NAI 에서 같은 것이다
-  const parts = [];
-  const wt = (w, tag) => { const v = (w*mul).toFixed(2); return v === "1.00" ? tag : `${v}::${tag}::`; };
-  for (const t of azTags(x)) parts.push(wt(t.w, t.tag));
-  if (e.tag) for (const t of e.tag.split(",")) parts.push(wt(e.w, t.trim()));
-  for (const t of d.tags) parts.push(wt(1, t));
-  return parts;
+  const out = [];
+  const put = (w, tag) => out.push({ tag, w: Number((w*mul).toFixed(2)) });
+  for (const t of azTags(x)) put(t.w, t.tag);
+  if (e.tag) for (const t of e.tag.split(",")) put(e.w, t.trim());
+  for (const t of d.tags) put(1, t);
+  return out;
+}
+// ★가중치 1.00 은 안 적는다 — `1.00::tag::` 와 `tag` 는 NAI 에서 같은 것이다
+function promptTags(){
+  return promptParts().map((p) => p.w === 1 ? p.tag : `${p.w.toFixed(2)}::${p.tag}::`);
 }
 function sync(){
   const x = AZ_PINS[azIdx], e = EL[elIdx], d = DIST[distIdx];
-  const parts = promptTags();
-  document.getElementById("out").textContent = parts.join(", ") + (parts.length?",":"");
+  // 화면에는 칩으로 — 태그 이름은 우리 표에서 오는 고정 문자열이다
+  document.getElementById("out").innerHTML = promptParts().map((p) =>
+    `<span class="wchip">${p.tag}${p.w === 1 ? "" : ` <b>&times;${p.w.toFixed(2)}</b>`}</span>`).join("");
   const deg = Math.round(x*180);
   document.getElementById("vAz").textContent =
     Math.abs(deg)===180 ? T("후면") : deg===0 ? T("정면") : T(deg>0?"오른쪽 {d}°":"왼쪽 {d}°", { d: Math.abs(deg) });
@@ -495,7 +513,20 @@ function sync(){
 
 // ── 조작 ───────────────────────────────────────────────────────────────────
 let drag = null;
-view.addEventListener("pointerdown",(ev)=>{ view.setPointerCapture(ev.pointerId);
+/** 그림판 오른쪽의 거리 눈금 — 누르면 그 칸으로 간다 (휠·키보드로만 되던 것) */
+function tickAt(ev){
+  const r = view.getBoundingClientRect();
+  const k = r.width / VW;
+  const x = (ev.clientX - r.left) / k, y = (ev.clientY - r.top) / k;
+  const gx = VW-42, gyT = 96, gyB = 424;
+  if (x < gx-80 || x > gx+16 || y < gyT-14 || y > gyB+14) return -1;
+  const t = Math.max(0, Math.min(1, (y - gyT) / (gyB - gyT)));
+  return Math.round(t * (DIST.length-1));
+}
+view.addEventListener("pointerdown",(ev)=>{
+  const i = tickAt(ev);
+  if (i >= 0) { distIdx = i; draw(); return; }   // 눈금을 눌렀으면 둘러보기는 시작하지 않는다
+  view.setPointerCapture(ev.pointerId);
   drag = { x:ev.clientX, y:ev.clientY, az:azIdx, el:elIdx, id:ev.pointerId }; });
 view.addEventListener("pointermove",(ev)=>{
   if (!drag || drag.id !== ev.pointerId) return;
@@ -587,8 +618,6 @@ document.getElementById("btnCopy").onclick = async () => {
 // ── 앱 언어를 따라간다 (사용자 결정 2026-09-11 「공식 플러그인은 세 언어를 기본으로」) ──────────
 // 정적 문구는 `data-t` 표식이 달린 자리를 사전이 갈아 끼우고, 그린 것(상태 줄·눈금)은 여기서 다시 그린다.
 function relabel(){
-  document.getElementById("hint").textContent =
-    T("드래그로 둘러보기 · 휠로 거리. 넣기는 스타일 카드의 「{label}」 블록을 갈아 끼웁니다.", { label: cameraBlockLabel() });
   sync(); drawHud();
 }
 (async () => {

@@ -12,15 +12,12 @@
     "카메라 구도": "Camera Framing",
     "지금 씬에 넣기": "Insert into the scene",
     "복사": "Copy",
-    "드래그로 둘러보기 · 휠로 거리. 넣기는 스타일 카드의 「{label}」 블록을 갈아 끼웁니다.":
-      "Drag to look around · wheel for distance. Insert replaces the “{label}” block on the style card.",
+    "드래그 둘러보기 · 휠 거리 · ←→ 방위 · ↑↓ 높이 · Home 정면":
+      "Drag to look around · wheel for distance · ←→ azimuth · ↑↓ height · Home to front",
     "방위": "Azimuth",
     "높이": "Height",
     "거리": "Distance",
     "배율": "Multiplier",
-    "모든 가중치에 곱합니다. 실측 최적 1.0 · 2.5 부근부터 그림이 무너집니다.":
-      "Multiplies every weight. Measured best at 1.0; from around 2.5 the image falls apart.",
-    "드래그": "Drag", "둘러보기": "look around", "휠": "Wheel", "정면으로": "front",
 
     // 마네킹의 앞·뒤 색 안내
     "앞": "front", "뒤": "back",
@@ -56,15 +53,12 @@
     "카메라 구도": "カメラ構図",
     "지금 씬에 넣기": "現在のシーンに入れる",
     "복사": "コピー",
-    "드래그로 둘러보기 · 휠로 거리. 넣기는 스타일 카드의 「{label}」 블록을 갈아 끼웁니다.":
-      "ドラッグで見回す・ホイールで距離。挿入はスタイルカードの「{label}」ブロックを差し替えます。",
+    "드래그 둘러보기 · 휠 거리 · ←→ 방위 · ↑↓ 높이 · Home 정면":
+      "ドラッグで見回す・ホイールで距離・←→ 方位・↑↓ 高さ・Home で正面",
     "방위": "方位",
     "높이": "高さ",
     "거리": "距離",
     "배율": "倍率",
-    "모든 가중치에 곱합니다. 실측 최적 1.0 · 2.5 부근부터 그림이 무너집니다.":
-      "すべての重みに掛けます。実測の最適は 1.0 で、2.5 あたりから絵が崩れます。",
-    "드래그": "ドラッグ", "둘러보기": "見回す", "휠": "ホイール", "정면으로": "正面へ",
 
     "앞": "前", "뒤": "後",
 
