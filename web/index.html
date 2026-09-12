@@ -236,6 +236,21 @@ const C_FRONT = "#7fb9f0", C_BACK = "#d98a5c";
 // ── 상태 ───────────────────────────────────────────────────────────────────
 const AZ_PINS = Array.from({length:16},(_,k)=> -0.875 + k*0.125);
 let azIdx = AZ_PINS.indexOf(0), elIdx = 6, distIdx = 6, mul = 1;   // elIdx 는 EL 배열 인덱스
+// ★★**지난번 구도로 연다** (사용자 지시 2026-09-12: *"플러그인의 옵션 상태를 앱 재실행해도 보존"*).
+//   이 화면은 앱과 다른 오리진이라 저장소가 앱 것과 섞이지 않고, 앱을 껐다 켜도 남는다 (실측 2026-09-12).
+const POSE_KEY = "peropix.camera.pose";
+function savePose(){
+  try { localStorage.setItem(POSE_KEY, JSON.stringify({ az: azIdx, el: elIdx, dist: distIdx, mul })); } catch (e) { /* 저장소를 막아 둔 환경 */ }
+}
+try {
+  const o = JSON.parse(localStorage.getItem(POSE_KEY) || "null");
+  if (o) {
+    if (Number.isInteger(o.az) && AZ_PINS[o.az] !== undefined) azIdx = o.az;
+    if (Number.isInteger(o.el) && EL[o.el]) elIdx = o.el;
+    if (Number.isInteger(o.dist) && DIST[o.dist]) distIdx = o.dist;
+    if (Number.isFinite(o.mul) && o.mul > 0) mul = o.mul;
+  }
+} catch (e) { /* 저장소를 막아 둔 환경 */ }
 // 어느 그림을 보고 있었는지는 **기억한다** (사용자 지시 2026-09-11) — 창을 닫았다 열어도 그대로다.
 // 방위·높이·거리는 기억하지 않는다: 그것은 이번에 만들 구도라 매번 정면·수평·전신에서 시작하는 편이 낫다.
 const VIEW_KEY = "peropix.camera.view";
@@ -507,6 +522,7 @@ function promptTags(){
   return promptParts().map((p) => p.w === 1 ? p.tag : `${p.w.toFixed(2)}::${p.tag}::`);
 }
 function sync(){
+  savePose();
   const x = AZ_PINS[azIdx], e = EL[elIdx], d = DIST[distIdx];
   // 화면에는 칩으로 — 태그 이름은 우리 표에서 오는 고정 문자열이다
   document.getElementById("out").innerHTML = promptParts().map((p) =>
@@ -579,6 +595,7 @@ function setMode(m){
 btnMode.onclick = () => setMode(mode === "model" ? "doll" : "model");
 
 const mulN = document.getElementById("mulN");
+mulN.value = String(mul);            // 기억해 둔 배율로 연다
 mulN.oninput = () => {
   const v = Number(mulN.value);
   if (Number.isFinite(v) && v > 0) { mul = v; sync(); }
