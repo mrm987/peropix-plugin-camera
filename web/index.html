@@ -68,10 +68,14 @@
   #help:hover { border-color: var(--accent); color: var(--ink); }
   /* 넣을 태그 — 날문자열 대신 가중치 칩. 한 상자에 배율까지 담는다 */
   /* ★★칩이 늘어도 **그림판을 밀지 않는다** (사용자 지적 2026-09-12: 줄이 늘면 구도 조정 화면이 움직인다).
-     상자 높이를 **고정**하고 넘치면 상자 안에서 스크롤한다 — 칩이 한 줄이든 세 줄이든 그림판 자리가 그대로다. */
+     칩은 **줄바꿈하지 않고** 한 줄로 두고, 넘치면 가로로 스크롤한다 (사용자 지시 2026-09-12).
+     스크롤바를 `auto` 가 아니라 `scroll` 로 둔 것은 자리를 늘 잡아 두기 위해서다 — 칩 수에 따라 스크롤바가
+     생겼다 사라지면 그만큼 상자 높이가 흔들려, 고치려던 증상이 작게 되돌아온다. */
   #outbox { flex: 0 0 auto; display: flex; align-items: center; gap: var(--sp-3);
-            padding: var(--sp-3) var(--sp-4); height: 76px; overflow: auto; }
-  #out { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; flex: 1; min-width: 0; }
+            padding: var(--sp-3) var(--sp-4); }
+  #out { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: nowrap; flex: 1; min-width: 0;
+         overflow-x: scroll; scrollbar-width: thin; scrollbar-color: var(--line) transparent; padding-bottom: 2px; }
+  #out .wchip { flex: 0 0 auto; }
   .wchip { display: inline-flex; align-items: baseline; gap: 5px; padding: 3px var(--sp-4); border-radius: 999px;
            border: 1px solid var(--line); background: var(--code-bg); font-family: var(--font-mono); font-size: var(--text-2xs); }
   .wchip b { font-weight: var(--w-semi); color: var(--accent-ink); font-size: var(--text-3xs); }
@@ -93,7 +97,6 @@
   </div>
   <div class="card" id="outbox">
     <div id="out"></div>
-    <span class="spacer"></span>
     <label for="mulN" data-t="배율">배율</label>
     <input type="number" id="mulN" min="0.1" max="5" step="0.1" value="1.0">
   </div>
