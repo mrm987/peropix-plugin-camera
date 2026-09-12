@@ -5,7 +5,7 @@
     "en": "Camera Framing",
     "ja": "カメラ構図"
   },
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": {
     "ko": "인물을 돌려 보며 방위·높이·거리를 고르면 구도 태그와 가중치를 만든다. 「지금 씬에 넣기」가 스타일 카드의 「카메라_구도」 블록을 갈아 끼운다.",
     "en": "Turn the figure around and pick an azimuth, height and distance; the plugin writes the framing tags with their weights. “Insert into the scene” replaces the style card's “Camera_Framing” block.",
